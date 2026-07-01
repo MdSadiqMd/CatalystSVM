@@ -1,0 +1,13 @@
+[package]
+name = "catalyst-trace-builder"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Execution trace building with Merkle commitments"
+
+[dependencies]
+catalyst-common = { path = "../common" }
+
+[lints]
+workspace = true
