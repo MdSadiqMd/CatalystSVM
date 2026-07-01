@@ -1,0 +1,32 @@
+[package]
+name = "catalyst-benchmark"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Benchmark CLI for CatalystSVM policy comparison"
+
+[[bin]]
+name = "catalyst-benchmark"
+path = "src/main.rs"
+
+[dependencies]
+catalyst-common = { path = "../common" }
+catalyst-ingress = { path = "../ingress" }
+catalyst-batch-policy = { path = "../batch-policy" }
+catalyst-execution-engine = { path = "../execution-engine" }
+catalyst-sp1-prover = { path = "../sp1-prover" }
+catalyst-sp1-verifier = { path = "../sp1-verifier" }
+
+serde.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+comfy-table.workspace = true
+csv.workspace = true
+plotters.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+
+[lints]
+workspace = true
