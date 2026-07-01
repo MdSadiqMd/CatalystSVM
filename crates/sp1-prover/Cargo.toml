@@ -1,0 +1,22 @@
+[package]
+name = "catalyst-sp1-prover"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "SP1 prover for CatalystSVM batch execution"
+
+[dependencies]
+catalyst-common = { path = "../common" }
+sp1-sdk = { version = "6.3", features = ["blocking"] }
+bincode = "1.3"
+serde.workspace = true
+serde_json.workspace = true
+hex.workspace = true
+
+[dev-dependencies]
+catalyst-execution-engine = { path = "../execution-engine" }
+catalyst-trace-builder = { path = "../trace-builder" }
+
+[lints]
+workspace = true
