@@ -1,0 +1,13 @@
+[package]
+name = "catalyst-batch-policy"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Batch sealing policies for CatalystSVM"
+
+[dependencies]
+catalyst-common = { path = "../common" }
+
+[lints]
+workspace = true
