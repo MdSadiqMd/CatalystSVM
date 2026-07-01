@@ -1,0 +1,15 @@
+[package]
+name = "catalyst-ingress"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Transaction ingestion and workload generation for CatalystSVM"
+
+[dependencies]
+catalyst-common = { path = "../common" }
+rand = { workspace = true }
+rand_distr = { workspace = true }
+
+[lints]
+workspace = true
