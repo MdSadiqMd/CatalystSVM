@@ -1,0 +1,14 @@
+[package]
+name = "catalyst-execution-engine"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Deterministic execution engine for batch replay"
+
+[dependencies]
+catalyst-common = { path = "../common" }
+catalyst-trace-builder = { path = "../trace-builder" }
+
+[lints]
+workspace = true
