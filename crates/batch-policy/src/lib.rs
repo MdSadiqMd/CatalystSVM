@@ -210,6 +210,179 @@ impl PolicyEngine for PriorityAwarePolicy {
     }
 }
 
+/// Traffic pattern detected from real-time analysis
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TrafficPattern {
+    Idle,     // < 1 tx/sec
+    Steady,   // 1-50 tx/sec, low variance
+    Bursty,   // high variance, spikes
+    HighLoad, // > 100 tx/sec sustained
+}
+
+/// Auto policy: automatically detects traffic patterns and switches behavior in real-time
+/// This is the "set it and forget it" policy for production use
+#[derive(Debug)]
+pub struct AutoPolicy {
+    min_batch: usize,
+    max_batch: usize,
+    max_latency_ms: u64,
+
+    // Real-time metrics (updated via observe_* methods)
+    arrival_times: Vec<u64>, // ring buffer of recent arrival timestamps (ms)
+    arrival_idx: usize,
+    last_arrival_ms: u64,
+    observed_pattern: TrafficPattern,
+
+    // Computed values
+    current_threshold: usize,
+    current_time_limit_ms: u64,
+}
+
+impl AutoPolicy {
+    pub fn new(min_batch: usize, max_batch: usize, max_latency_ms: u64) -> Self {
+        Self {
+            min_batch,
+            max_batch,
+            max_latency_ms,
+            arrival_times: vec![0; 100], // track last 100 arrivals
+            arrival_idx: 0,
+            last_arrival_ms: 0,
+            observed_pattern: TrafficPattern::Idle,
+            current_threshold: min_batch,
+            current_time_limit_ms: max_latency_ms,
+        }
+    }
+
+    /// Call this when a transaction arrives to update pattern detection
+    pub fn record_arrival(&mut self, now_ms: u64) {
+        self.arrival_times[self.arrival_idx] = now_ms;
+        self.arrival_idx = (self.arrival_idx + 1) % self.arrival_times.len();
+        self.last_arrival_ms = now_ms;
+        self.update_pattern(now_ms);
+    }
+
+    fn update_pattern(&mut self, now_ms: u64) {
+        // Calculate arrival rate over last second
+        let one_sec_ago = now_ms.saturating_sub(1000);
+        let recent_count = self
+            .arrival_times
+            .iter()
+            .filter(|&&t| t > one_sec_ago && t <= now_ms)
+            .count();
+
+        // Calculate variance (burstiness) over last 5 seconds
+        let five_sec_ago = now_ms.saturating_sub(5000);
+        let intervals: Vec<u64> = self
+            .arrival_times
+            .iter()
+            .filter(|&&t| t > five_sec_ago && t <= now_ms)
+            .cloned()
+            .collect::<Vec<_>>()
+            .windows(2)
+            .map(|w| w[1].saturating_sub(w[0]))
+            .collect();
+
+        let variance = if intervals.len() > 1 {
+            let mean = intervals.iter().sum::<u64>() as f64 / intervals.len() as f64;
+            let var = intervals
+                .iter()
+                .map(|&i| (i as f64 - mean).powi(2))
+                .sum::<f64>()
+                / intervals.len() as f64;
+            var.sqrt()
+        } else {
+            0.0
+        };
+
+        // Classify pattern
+        let new_pattern = if recent_count < 1 {
+            TrafficPattern::Idle
+        } else if recent_count > 100 {
+            TrafficPattern::HighLoad
+        } else if variance > 200.0 {
+            TrafficPattern::Bursty
+        } else {
+            TrafficPattern::Steady
+        };
+
+        if new_pattern != self.observed_pattern {
+            self.observed_pattern = new_pattern;
+            self.adapt_to_pattern();
+        }
+    }
+
+    fn adapt_to_pattern(&mut self) {
+        match self.observed_pattern {
+            TrafficPattern::Idle => {
+                // Seal quickly with small batches — don't let txs wait
+                self.current_threshold = self.min_batch;
+                self.current_time_limit_ms = 500; // 500ms max wait
+            }
+            TrafficPattern::Steady => {
+                // Balanced: moderate batch size, moderate timeout
+                self.current_threshold = (self.min_batch + self.max_batch) / 2;
+                self.current_time_limit_ms = self.max_latency_ms / 2;
+            }
+            TrafficPattern::Bursty => {
+                // Aggressive: seal on small count or short time to handle spikes
+                self.current_threshold = self.min_batch;
+                self.current_time_limit_ms = 200; // fast seal during bursts
+            }
+            TrafficPattern::HighLoad => {
+                // Batch efficiently: larger batches, amortize proving cost
+                self.current_threshold = self.max_batch;
+                self.current_time_limit_ms = self.max_latency_ms;
+            }
+        }
+    }
+
+    pub fn current_pattern(&self) -> TrafficPattern {
+        self.observed_pattern
+    }
+}
+
+impl PolicyEngine for AutoPolicy {
+    fn should_seal(&self, queue_len: usize, oldest_wait_ms: u64, avg_arrival_rate: f64) -> bool {
+        if queue_len == 0 {
+            return false;
+        }
+
+        // Seal if we hit the dynamic threshold
+        if queue_len >= self.current_threshold {
+            return true;
+        }
+
+        // Seal if oldest tx has waited too long
+        if oldest_wait_ms >= self.current_time_limit_ms {
+            return true;
+        }
+
+        // Emergency seal if hitting hard latency limit
+        if oldest_wait_ms >= self.max_latency_ms {
+            return true;
+        }
+
+        // High-load burst detection: if arrival rate spikes, seal what we have
+        if avg_arrival_rate > 50.0 && queue_len >= self.min_batch {
+            return true;
+        }
+
+        false
+    }
+
+    fn name(&self) -> &'static str {
+        "Auto"
+    }
+
+    fn observe_queue_growth(&mut self, rate: f64) {
+        // Use arrival rate changes to trigger pattern re-evaluation
+        if rate > 2.0 && self.observed_pattern != TrafficPattern::HighLoad {
+            self.observed_pattern = TrafficPattern::Bursty;
+            self.adapt_to_pattern();
+        }
+    }
+}
+
 /// Factory for creating policies by name
 pub fn create_policy(name: &str, config: &PolicyConfig) -> Box<dyn PolicyEngine> {
     match name.to_lowercase().as_str() {
