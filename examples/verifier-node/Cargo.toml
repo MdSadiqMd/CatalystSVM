@@ -1,0 +1,17 @@
+[package]
+name = "catalyst-verifier-node"
+version = "0.1.0"
+edition = "2024"
+description = "CatalystSVM verifier node - verifies ZK proofs from validators"
+
+[dependencies]
+catalyst-common = { path = "../../crates/common" }
+catalyst-sp1-verifier = { path = "../../crates/sp1-verifier" }
+
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+bincode = "1.3"
