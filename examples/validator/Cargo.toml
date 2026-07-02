@@ -1,0 +1,21 @@
+[package]
+name = "catalyst-validator"
+version = "0.1.0"
+edition = "2024"
+description = "CatalystSVM validator node - produces ZK proofs for transaction batches"
+
+[dependencies]
+catalyst-common = { path = "../../crates/common" }
+catalyst-batch-policy = { path = "../../crates/batch-policy" }
+catalyst-execution-engine = { path = "../../crates/execution-engine" }
+catalyst-trace-builder = { path = "../../crates/trace-builder" }
+catalyst-sp1-prover = { path = "../../crates/sp1-prover" }
+catalyst-sp1-verifier = { path = "../../crates/sp1-verifier" }
+
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+bincode = "1.3"
