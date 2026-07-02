@@ -1,0 +1,17 @@
+[package]
+name = "catalyst-sp1-program"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+sp1-zkvm = "6.3"
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+bincode = { version = "1.3", default-features = false }
+sha2 = "0.10"
+hex = { version = "0.4", default-features = false, features = ["alloc"] }
+
+# Using standard sha2 to match host-side hashes
+# [patch.crates-io]
+# sha2 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", branch = "patch-sha2-v0.10.8" }
