@@ -1,0 +1,60 @@
+[workspace]
+members = [
+    "crates/common",
+    "crates/ingress",
+    "crates/batch-policy",
+    "crates/execution-engine",
+    "crates/trace-builder",
+    "crates/benchmark-cli",
+    "crates/sp1-prover",
+    "crates/sp1-verifier",
+    "examples/validator",
+    "examples/verifier-node",
+    "examples/client",
+]
+exclude = [
+    "crates/sp1-program",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["catalystSVM"]
+license = "MIT"
+repository = "https://github.com/catalystSVM/catalystSVM"
+
+[workspace.dependencies]
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2"
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+sha2 = "0.10"
+hex = "0.4"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"
+rand_distr = "0.4"
+clap = { version = "4", features = ["derive"] }
+comfy-table = "7"
+plotters = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+csv = "1.3"
+sp1-sdk = { version = "6.3", features = ["blocking"] }
+bincode = "1.3"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+print_stdout = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
+
+[profile.release]
+lto = "thin"
+strip = true
