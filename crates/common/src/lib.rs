@@ -43,9 +43,14 @@ pub trait Executor: Send + Sync {
     fn execute(&self, batch: &Batch, clock: &dyn Clock) -> Result<ExecutionTrace, ExecError>;
 }
 
-/// Prover trait — generates a proof artifact from an execution trace
+/// Prover trait — generates a proof artifact from an execution trace and its transactions
 pub trait Prover: Send + Sync {
-    fn prove(&self, trace: &ExecutionTrace, clock: &dyn Clock) -> Result<Proof, ProveError>;
+    fn prove(
+        &self,
+        trace: &ExecutionTrace,
+        transactions: &[Transaction],
+        clock: &dyn Clock,
+    ) -> Result<Proof, ProveError>;
 }
 
 /// Verifier trait — verifies a proof against an execution trace
