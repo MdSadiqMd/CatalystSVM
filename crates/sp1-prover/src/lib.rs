@@ -181,29 +181,38 @@ impl Sp1Prover {
 }
 
 impl CatalystProver for Sp1Prover {
-    fn prove(&self, trace: &ExecutionTrace, clock: &dyn Clock) -> Result<Proof, ProveError> {
-        // Reconstruct the same initial state and transactions that DeterministicExecutor used
-        let mut initial_state: BTreeMap<String, u64> = BTreeMap::new();
-
-        // DeterministicExecutor initializes sender balances based on tx_ids
-        for entry in &trace.entries {
-            let sender = format!("sender_{}", entry.tx_id.as_str());
-            initial_state.entry(sender).or_insert(1_000_000);
+    fn prove(
+        &self,
+        trace: &ExecutionTrace,
+        transactions: &[Transaction],
+        clock: &dyn Clock,
+    ) -> Result<Proof, ProveError> {
+        if transactions.is_empty() {
+            // Fallback: reconstruct from trace (DeterministicExecutor path)
+            let mut initial_state: BTreeMap<String, u64> = BTreeMap::new();
+            for entry in &trace.entries {
+                let sender = format!("sender_{}", entry.tx_id.as_str());
+                initial_state.entry(sender).or_insert(1_000_000);
+            }
+            let reconstructed: Vec<Transaction> = trace
+                .entries
+                .iter()
+                .map(|e| {
+                    let sender = format!("sender_{}", e.tx_id.as_str());
+                    let mut tx = Transaction::new(e.tx_id.clone(), sender, "execute");
+                    tx.instruction_data = vec![3u8];
+                    tx
+                })
+                .collect();
+            self.prove_with_transactions(trace, &reconstructed, &initial_state, clock)
+        } else {
+            // Use the real transactions (FullExecutor path)
+            let mut initial_state: BTreeMap<String, u64> = BTreeMap::new();
+            for tx in transactions {
+                initial_state.entry(tx.sender.clone()).or_insert(1_000_000);
+            }
+            self.prove_with_transactions(trace, transactions, &initial_state, clock)
         }
-
-        // DeterministicExecutor uses Noop (opcode 3) for all transactions
-        let transactions: Vec<Transaction> = trace
-            .entries
-            .iter()
-            .map(|e| {
-                let sender = format!("sender_{}", e.tx_id.as_str());
-                let mut tx = Transaction::new(e.tx_id.clone(), sender, "execute");
-                tx.instruction_data = vec![3u8]; // Noop
-                tx
-            })
-            .collect();
-
-        self.prove_with_transactions(trace, &transactions, &initial_state, clock)
     }
 }
 
@@ -340,7 +349,7 @@ mod tests {
         let clock = VirtualClock::new(0);
         let prover = Sp1Prover::new();
 
-        let result = prover.prove(&trace, &clock);
+        let result = prover.prove(&trace, &[], &clock);
         assert!(result.is_ok());
 
         let proof = result.unwrap();
